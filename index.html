@@ -1067,7 +1067,7 @@
                     for (let i = 0; i < daysDiff; i++) {
                         const date = new Date(startDate);
                         date.setDate(date.getDate() + i);
-                        expanded.push({ ...task, date, originalId: task.id, id: task.id * 10000 + i });
+                        expanded.push({ ...task, date, originalId: task.id, recurrenceIndex: i });
                     }
                 } else if (task.recurrence === 'weekly') {
                     const weeksCount = Math.ceil(daysDiff / 7);
@@ -1075,7 +1075,7 @@
                         const date = new Date(startDate);
                         date.setDate(date.getDate() + (i * 7));
                         if (date <= endDate) {
-                            expanded.push({ ...task, date, originalId: task.id, id: task.id * 10000 + 100 + i });
+                            expanded.push({ ...task, date, originalId: task.id, recurrenceIndex: i });
                         }
                     }
                 }
@@ -1280,6 +1280,11 @@
         }
 
         async function aiSuggestSchedule(event) {
+            if (!event) {
+                console.error('aiSuggestSchedule called without event parameter');
+                return;
+            }
+            
             saveAISettings();
             
             const apiKey = document.getElementById('aiApiKey').value.trim();
@@ -1290,7 +1295,7 @@
                 return;
             }
 
-            const button = event?.target || document.activeElement;
+            const button = event.target;
             const originalText = button.innerHTML;
             button.innerHTML = '<span class="loading"></span> Thinking...';
             button.disabled = true;
@@ -1316,7 +1321,7 @@ Provide a brief, actionable recommendation.`;
                     'Content-Type': 'application/json'
                 };
                 
-                if (apiKey && apiKey.trim().length > 0) {
+                if (apiKey) {
                     headers['Authorization'] = `Bearer ${apiKey}`;
                 }
 
