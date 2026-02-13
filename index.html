@@ -407,6 +407,9 @@
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
         }
 
         .alert.warning {
@@ -553,7 +556,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">🌓 Toggle Theme</button>
             <h1>📅 AI Schedule Generator</h1>
             <p>Smart scheduling with priority, dependencies, and AI assistance</p>
         </div>
@@ -580,7 +583,7 @@
 
                 <div class="section">
                     <h3>Break Settings
-                        <span class="tooltip">❓
+                        <span class="tooltip" role="button" tabindex="0" aria-label="Help: Auto-insert breaks after accumulating work hours">❓
                             <span class="tooltiptext">Auto-insert breaks after accumulating work hours</span>
                         </span>
                     </h3>
@@ -613,7 +616,7 @@
                         <select id="todoDependency">
                             <option value="">No Dependency</option>
                         </select>
-                        <span class="tooltip">❓
+                        <span class="tooltip" role="button" tabindex="0" aria-label="Help: Select a task that must be completed before this one">❓
                             <span class="tooltiptext">Select a task that must be completed before this one</span>
                         </span>
                     </div>
@@ -650,7 +653,7 @@
                         <div class="input-group">
                             <input type="password" id="aiApiKey" placeholder="API Key (optional)">
                         </div>
-                        <p class="help-text">Leave blank to use without authentication</p>
+                        <p class="help-text">⚠️ API keys are stored locally in your browser. For security, avoid using sensitive keys.</p>
                         <div class="input-group">
                             <select id="aiModel">
                                 <option value="">Loading models...</option>
@@ -794,9 +797,10 @@
             const alert = document.getElementById('alert');
             alert.className = `alert ${type} show`;
             alert.textContent = message;
+            const timeout = type === 'success' && message.length > 100 ? 15000 : 5000;
             setTimeout(() => {
                 alert.classList.remove('show');
-            }, 5000);
+            }, timeout);
         }
 
         function timeToMinutes(time) {
@@ -1050,7 +1054,7 @@
                     for (let i = 0; i < daysDiff; i++) {
                         const date = new Date(startDate);
                         date.setDate(date.getDate() + i);
-                        expanded.push({ ...task, date, id: task.id + '_day' + i });
+                        expanded.push({ ...task, date, id: `${task.id}_day_${i}` });
                     }
                 } else if (task.recurrence === 'weekly') {
                     const weeksCount = Math.ceil(daysDiff / 7);
@@ -1058,7 +1062,7 @@
                         const date = new Date(startDate);
                         date.setDate(date.getDate() + (i * 7));
                         if (date <= endDate) {
-                            expanded.push({ ...task, date, id: task.id + '_week' + i });
+                            expanded.push({ ...task, date, id: `${task.id}_week_${i}` });
                         }
                     }
                 }
@@ -1262,7 +1266,7 @@
             }).join('');
         }
 
-        async function aiSuggestSchedule() {
+        async function aiSuggestSchedule(event) {
             saveAISettings();
             
             const apiKey = document.getElementById('aiApiKey').value;
@@ -1273,7 +1277,7 @@
                 return;
             }
 
-            const button = event.target;
+            const button = event ? event.target : document.querySelector('.success');
             const originalText = button.innerHTML;
             button.innerHTML = '<span class="loading"></span> Thinking...';
             button.disabled = true;
@@ -1322,8 +1326,7 @@ Provide a brief, actionable recommendation.`;
                 const data = await response.json();
                 const suggestion = data.choices?.[0]?.message?.content || 'No suggestion available';
                 
-                alert(`AI Scheduling Suggestion:\n\n${suggestion}`);
-                showAlert('AI suggestion received!', 'success');
+                showAlert(`AI Suggestion: ${suggestion}`, 'success');
             } catch (error) {
                 console.error('AI Error:', error);
                 showAlert(`AI request failed: ${error.message}`, 'error');
