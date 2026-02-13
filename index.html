@@ -680,13 +680,13 @@
                 const availableSlots = findAvailableSlots(workStartTime, workEndTime, daySchedule.slots);
 
                 // Try to fit todos into available slots
-                let i = 0;
-                while (i < unscheduledTodos.length && availableSlots.length > 0) {
-                    const todo = unscheduledTodos[i];
+                let todoIndex = 0;
+                while (todoIndex < unscheduledTodos.length && availableSlots.length > 0) {
+                    const todo = unscheduledTodos[todoIndex];
                     let scheduled = false;
 
-                    for (let j = 0; j < availableSlots.length; j++) {
-                        const slot = availableSlots[j];
+                    for (let slotIndex = 0; slotIndex < availableSlots.length; slotIndex++) {
+                        const slot = availableSlots[slotIndex];
                         const slotDuration = getTimeDifference(slot.start, slot.end);
 
                         if (slotDuration >= todo.duration) {
@@ -701,18 +701,18 @@
 
                             // Update available slot
                             if (slotDuration > todo.duration) {
-                                availableSlots[j].start = endTime;
+                                availableSlots[slotIndex].start = endTime;
                             } else {
-                                availableSlots.splice(j, 1);
+                                availableSlots.splice(slotIndex, 1);
                             }
 
-                            unscheduledTodos.splice(i, 1);
+                            unscheduledTodos.splice(todoIndex, 1);
                             scheduled = true;
                             break;
                         }
                     }
 
-                    if (!scheduled) i++;
+                    if (!scheduled) todoIndex++;
                 }
 
                 // Sort all slots by start time
