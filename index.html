@@ -653,7 +653,7 @@
                         <div class="input-group">
                             <input type="password" id="aiApiKey" placeholder="API Key (optional)">
                         </div>
-                        <p class="help-text">⚠️ API keys are stored locally in your browser. For security, avoid using sensitive keys.</p>
+                        <p class="help-text">⚠️ Security Warning: API keys are stored in plain text in your browser's localStorage. They are vulnerable to XSS attacks and can be accessed by any script on this page. Use with caution and avoid storing sensitive production keys.</p>
                         <div class="input-group">
                             <select id="aiModel">
                                 <option value="">Loading models...</option>
@@ -776,8 +776,9 @@
                 const saved = localStorage.getItem('aiModel');
                 if (saved) select.value = saved;
             } catch (error) {
+                console.error('Failed to load AI models:', error);
                 select.innerHTML = '<option value="openai">OpenAI (default)</option>';
-                showAlert('Could not load models. Using default.', 'warning');
+                showAlert('Could not load AI models. Using default. Error: ' + error.message, 'warning');
             }
         }
 
@@ -801,7 +802,7 @@
             const alert = document.getElementById('alert');
             alert.className = `alert ${type} show`;
             alert.textContent = message;
-            const timeout = type === 'success' && message.length > LONG_MESSAGE_THRESHOLD ? LONG_ALERT_TIMEOUT : DEFAULT_ALERT_TIMEOUT;
+            const timeout = message.length > LONG_MESSAGE_THRESHOLD ? LONG_ALERT_TIMEOUT : DEFAULT_ALERT_TIMEOUT;
             setTimeout(() => {
                 alert.classList.remove('show');
             }, timeout);
@@ -1066,7 +1067,7 @@
                     for (let i = 0; i < daysDiff; i++) {
                         const date = new Date(startDate);
                         date.setDate(date.getDate() + i);
-                        expanded.push({ ...task, date, id: `${task.id}_day_${i}` });
+                        expanded.push({ ...task, date, originalId: task.id, id: task.id * 10000 + i });
                     }
                 } else if (task.recurrence === 'weekly') {
                     const weeksCount = Math.ceil(daysDiff / 7);
@@ -1074,7 +1075,7 @@
                         const date = new Date(startDate);
                         date.setDate(date.getDate() + (i * 7));
                         if (date <= endDate) {
-                            expanded.push({ ...task, date, id: `${task.id}_week_${i}` });
+                            expanded.push({ ...task, date, originalId: task.id, id: task.id * 10000 + 100 + i });
                         }
                     }
                 }
@@ -1315,7 +1316,7 @@ Provide a brief, actionable recommendation.`;
                     'Content-Type': 'application/json'
                 };
                 
-                if (apiKey && apiKey.length > 0) {
+                if (apiKey && apiKey.trim().length > 0) {
                     headers['Authorization'] = `Bearer ${apiKey}`;
                 }
 
