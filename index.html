@@ -556,7 +556,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">🌓 Toggle Theme</button>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌓 Toggle Theme</button>
             <h1>📅 AI Schedule Generator</h1>
             <p>Smart scheduling with priority, dependencies, and AI assistance</p>
         </div>
@@ -704,6 +704,10 @@
     </div>
 
     <script>
+        const LONG_MESSAGE_THRESHOLD = 100;
+        const LONG_ALERT_TIMEOUT = 15000;
+        const DEFAULT_ALERT_TIMEOUT = 5000;
+
         let todos = [];
         let fixedItems = [];
         let blockedTimes = [];
@@ -797,7 +801,7 @@
             const alert = document.getElementById('alert');
             alert.className = `alert ${type} show`;
             alert.textContent = message;
-            const timeout = type === 'success' && message.length > 100 ? 15000 : 5000;
+            const timeout = type === 'success' && message.length > LONG_MESSAGE_THRESHOLD ? LONG_ALERT_TIMEOUT : DEFAULT_ALERT_TIMEOUT;
             setTimeout(() => {
                 alert.classList.remove('show');
             }, timeout);
@@ -1011,11 +1015,17 @@
             const sorted = [];
             const visited = new Set();
             const visiting = new Set();
+            const dependencyChain = [];
 
             function visit(taskId) {
                 if (visited.has(taskId)) return true;
                 if (visiting.has(taskId)) {
-                    showAlert('Circular dependency detected!', 'error');
+                    const cycleStart = dependencyChain.indexOf(taskId);
+                    const cycle = dependencyChain.slice(cycleStart).map(id => {
+                        const task = tasks.find(t => t.id === id);
+                        return task ? task.name : `Task ${id}`;
+                    }).join(' → ');
+                    showAlert(`Circular dependency detected: ${cycle} → ${tasks.find(t => t.id === taskId)?.name || taskId}`, 'error');
                     return false;
                 }
 
@@ -1023,12 +1033,14 @@
                 if (!task) return true;
 
                 visiting.add(taskId);
+                dependencyChain.push(taskId);
 
                 if (task.dependencyId) {
                     if (!visit(task.dependencyId)) return false;
                 }
 
                 visiting.delete(taskId);
+                dependencyChain.pop();
                 visited.add(taskId);
                 sorted.push(task);
                 return true;
@@ -1269,7 +1281,7 @@
         async function aiSuggestSchedule(event) {
             saveAISettings();
             
-            const apiKey = document.getElementById('aiApiKey').value;
+            const apiKey = document.getElementById('aiApiKey').value.trim();
             const model = document.getElementById('aiModel').value || 'openai';
             
             if (todos.length === 0) {
@@ -1277,7 +1289,7 @@
                 return;
             }
 
-            const button = event ? event.target : document.querySelector('.success');
+            const button = event?.target || document.activeElement;
             const originalText = button.innerHTML;
             button.innerHTML = '<span class="loading"></span> Thinking...';
             button.disabled = true;
@@ -1303,7 +1315,7 @@ Provide a brief, actionable recommendation.`;
                     'Content-Type': 'application/json'
                 };
                 
-                if (apiKey) {
+                if (apiKey && apiKey.length > 0) {
                     headers['Authorization'] = `Bearer ${apiKey}`;
                 }
 
