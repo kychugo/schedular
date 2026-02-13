@@ -568,16 +568,16 @@
                 <div class="section">
                     <h3>Working Hours</h3>
                     <div class="input-group">
-                        <input type="time" id="workStart" value="09:00">
-                        <input type="time" id="workEnd" value="17:00">
+                        <input type="time" id="workStart" value="09:00" aria-label="Work start time">
+                        <input type="time" id="workEnd" value="17:00" aria-label="Work end time">
                     </div>
                 </div>
 
                 <div class="section">
                     <h3>Date Range</h3>
                     <div class="input-group">
-                        <input type="date" id="startDate">
-                        <input type="date" id="endDate">
+                        <input type="date" id="startDate" aria-label="Start date">
+                        <input type="date" id="endDate" aria-label="End date">
                     </div>
                 </div>
 
@@ -670,7 +670,7 @@
                 
                 <div class="actions">
                     <button onclick="generateSchedule()">Generate Schedule</button>
-                    <button class="success" onclick="aiSuggestSchedule()">✨ AI Suggest</button>
+                    <button class="success" onclick="aiSuggestSchedule(event)">✨ AI Suggest</button>
                     <button onclick="exportToWord()">Export to Word</button>
                     <button class="danger" onclick="clearAll()">Clear All</button>
                 </div>
@@ -777,8 +777,8 @@
                 if (saved) select.value = saved;
             } catch (error) {
                 console.error('Failed to load AI models:', error);
-                select.innerHTML = '<option value="openai">OpenAI (default)</option>';
-                showAlert('Could not load AI models. Using default. Error: ' + error.message, 'warning');
+                select.innerHTML = '<option value="">Select Model</option>';
+                showAlert('Could not load AI models. Please check your internet connection. Error: ' + error.message, 'warning');
             }
         }
 
@@ -802,7 +802,9 @@
             const alert = document.getElementById('alert');
             alert.className = `alert ${type} show`;
             alert.textContent = message;
-            const timeout = message.length > LONG_MESSAGE_THRESHOLD ? LONG_ALERT_TIMEOUT : DEFAULT_ALERT_TIMEOUT;
+            // Error messages stay longer, success messages shorter
+            const baseTimeout = type === 'error' ? 8000 : type === 'success' ? 4000 : 6000;
+            const timeout = message.length > LONG_MESSAGE_THRESHOLD ? baseTimeout * 2 : baseTimeout;
             setTimeout(() => {
                 alert.classList.remove('show');
             }, timeout);
@@ -1026,7 +1028,7 @@
                         const task = tasks.find(t => t.id === id);
                         return task ? task.name : `Task ${id}`;
                     }).join(' → ');
-                    showAlert(`Circular dependency detected: ${cycle} → ${tasks.find(t => t.id === taskId)?.name || taskId}`, 'error');
+                    showAlert(`Circular dependency detected: ${cycle} → ${tasks.find(t => t.id === taskId)?.name || taskId}. Please remove or change task dependencies to break the cycle.`, 'error');
                     return false;
                 }
 
@@ -1280,11 +1282,6 @@
         }
 
         async function aiSuggestSchedule(event) {
-            if (!event) {
-                console.error('aiSuggestSchedule called without event parameter');
-                return;
-            }
-            
             saveAISettings();
             
             const apiKey = document.getElementById('aiApiKey').value.trim();
@@ -1338,7 +1335,8 @@ Provide a brief, actionable recommendation.`;
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                    const errorText = await response.text().catch(() => '');
+                    throw new Error(`API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`);
                 }
 
                 const data = await response.json();
