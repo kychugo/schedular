@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Schedule Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --bg-primary: white;
+            --bg-secondary: #f8f9fa;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --panel-border: #e9ecef;
+            --input-bg: white;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="dark"] {
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+            --bg-primary: #0f3460;
+            --bg-secondary: #1a1a2e;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+            --border-color: #495057;
+            --panel-border: #343a40;
+            --input-bg: #16213e;
+            --shadow-color: rgba(0, 0, 0, 0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            transition: background 0.3s;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-primary);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px var(--shadow-color);
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid var(--panel-border);
+            transition: background 0.3s, border-color 0.3s;
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section h3 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-size: 1.1em;
+            transition: color 0.3s;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="time"],
+        input[type="date"],
+        input[type="password"],
+        select {
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 120px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.danger {
+            background: #dc3545;
+        }
+
+        button.danger:hover {
+            background: #c82333;
+        }
+
+        button.success {
+            background: #28a745;
+        }
+
+        button.success:hover {
+            background: #218838;
+        }
+
+        .item-list {
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            transition: background 0.3s;
+        }
+
+        .item {
+            background: #e7f3ff;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .item.priority-high {
+            background: #ffe7e7;
+            border-left-color: #dc3545;
+        }
+
+        .item.priority-medium {
+            background: #fff8e7;
+            border-left-color: #ffc107;
+        }
+
+        .item.priority-low {
+            background: #e7f3ff;
+            border-left-color: #17a2b8;
+        }
+
+        .item.fixed {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .item.blocked {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .item-content {
+            flex: 1;
+        }
+
+        .item-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .item-details {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .priority-badge.high {
+            background: #dc3545;
+            color: white;
+        }
+
+        .priority-badge.medium {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .priority-badge.low {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .actions {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .schedule-output {
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            transition: background 0.3s;
+        }
+
+        .schedule-day {
+            margin-bottom: 30px;
+            border: 2px solid var(--panel-border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .day-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+
+        .day-content {
+            padding: 15px;
+        }
+
+        .time-slot {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 15px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            align-items: center;
+            transition: background 0.3s;
+        }
+
+        .time-slot.flexible {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+        }
+
+        .time-slot.flexible.priority-high {
+            background: #ffe7e7;
+            border-left-color: #dc3545;
+        }
+
+        .time-slot.flexible.priority-medium {
+            background: #fff8e7;
+            border-left-color: #ffc107;
+        }
+
+        .time-slot.flexible.priority-low {
+            background: #e7f3ff;
+            border-left-color: #17a2b8;
+        }
+
+        .time-slot.fixed {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+
+        .time-slot.blocked {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .time-slot.break {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .time {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .task-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .alert.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 968px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .theme-toggle {
+                position: static;
+                margin-bottom: 15px;
+            }
+        }
+
+        .help-text {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+            font-style: italic;
+            transition: color 0.3s;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            margin-left: 5px;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .collapsible {
+            background-color: rgba(102, 126, 234, 0.1);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 12px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 1em;
+            font-weight: 600;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .collapsible:hover {
+            background-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 15px;
+        }
+
+        .collapsible-content.active {
+            max-height: 2000px;
+            padding: 15px;
+        }
+
+        .recurring-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            background: #6c757d;
+            color: white;
+            margin-left: 5px;
+        }
+
+        .dependency-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            background: #17a2b8;
+            color: white;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌓 Toggle Theme</button>
+            <h1>📅 AI Schedule Generator</h1>
+            <p>Smart scheduling with priority, dependencies, and AI assistance</p>
+        </div>
+
+        <div class="content">
+            <div class="panel">
+                <h2>⚙️ Configuration</h2>
+                
+                <div class="section">
+                    <h3>Working Hours</h3>
+                    <div class="input-group">
+                        <input type="time" id="workStart" value="09:00" aria-label="Work start time">
+                        <input type="time" id="workEnd" value="17:00" aria-label="Work end time">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Date Range</h3>
+                    <div class="input-group">
+                        <input type="date" id="startDate" aria-label="Start date">
+                        <input type="date" id="endDate" aria-label="End date">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Break Settings
+                        <span class="tooltip" role="button" tabindex="0" aria-label="Help: Auto-insert breaks after accumulating work hours">❓
+                            <span class="tooltiptext">Auto-insert breaks after accumulating work hours</span>
+                        </span>
+                    </h3>
+                    <div class="input-group">
+                        <input type="number" id="breakDuration" placeholder="Break (min)" min="5" max="60" value="15">
+                        <input type="number" id="breakFrequency" placeholder="After (hours)" min="1" max="8" value="2" step="0.5">
+                    </div>
+                    <p class="help-text">Insert a break after every X hours of work</p>
+                </div>
+
+                <div class="section">
+                    <h3>📝 Add Flexible Task</h3>
+                    <div class="input-group">
+                        <input type="text" id="todoName" placeholder="Task name">
+                        <input type="number" id="todoDuration" placeholder="Hours" min="0.5" step="0.5" value="1">
+                    </div>
+                    <div class="input-group">
+                        <select id="todoPriority">
+                            <option value="medium">Medium Priority</option>
+                            <option value="high">High Priority</option>
+                            <option value="low">Low Priority</option>
+                        </select>
+                        <select id="todoRecurrence">
+                            <option value="none">No Recurrence</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <select id="todoDependency">
+                            <option value="">No Dependency</option>
+                        </select>
+                        <span class="tooltip" role="button" tabindex="0" aria-label="Help: Select a task that must be completed before this one">❓
+                            <span class="tooltiptext">Select a task that must be completed before this one</span>
+                        </span>
+                    </div>
+                    <button onclick="addTodo()">Add Task</button>
+                    <div id="todoList" class="item-list"></div>
+                </div>
+
+                <div class="section">
+                    <h3>📌 Add Fixed Time Block</h3>
+                    <div class="input-group">
+                        <input type="text" id="fixedName" placeholder="Name">
+                        <input type="time" id="fixedStart" placeholder="Start">
+                        <input type="time" id="fixedEnd" placeholder="End">
+                        <button onclick="addFixed()">Add</button>
+                    </div>
+                    <div id="fixedList" class="item-list"></div>
+                </div>
+
+                <div class="section">
+                    <h3>🚫 Add Blocked Time</h3>
+                    <div class="input-group">
+                        <input type="text" id="blockedName" placeholder="Reason">
+                        <input type="time" id="blockedStart" placeholder="Start">
+                        <input type="time" id="blockedEnd" placeholder="End">
+                        <button onclick="addBlocked()">Add</button>
+                    </div>
+                    <div id="blockedList" class="item-list"></div>
+                </div>
+
+                <button class="collapsible" onclick="toggleCollapsible(this)">🤖 AI Settings</button>
+                <div class="collapsible-content">
+                    <div class="section">
+                        <h3>API Configuration</h3>
+                        <div class="input-group">
+                            <input type="password" id="aiApiKey" placeholder="API Key (optional)">
+                        </div>
+                        <p class="help-text">⚠️ Security Warning: API keys are stored in plain text in your browser's localStorage. They are vulnerable to XSS attacks and can be accessed by any script on this page. Use with caution and avoid storing sensitive production keys.</p>
+                        <div class="input-group">
+                            <select id="aiModel">
+                                <option value="">Loading models...</option>
+                            </select>
+                            <button onclick="loadAIModels()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>📊 Generated Schedule</h2>
+                <div id="alert" class="alert"></div>
+                
+                <div class="actions">
+                    <button onclick="generateSchedule()">Generate Schedule</button>
+                    <button class="success" onclick="aiSuggestSchedule(event)">✨ AI Suggest</button>
+                    <button onclick="exportToWord()">Export to Word</button>
+                    <button class="danger" onclick="clearAll()">Clear All</button>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #dc3545;"></div>
+                        <span style="color: var(--text-primary);">High Priority</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffc107;"></div>
+                        <span style="color: var(--text-primary);">Medium/Fixed</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #17a2b8;"></div>
+                        <span style="color: var(--text-primary);">Low Priority</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #28a745;"></div>
+                        <span style="color: var(--text-primary);">Break</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #dc3545;"></div>
+                        <span style="color: var(--text-primary);">Blocked</span>
+                    </div>
+                </div>
+
+                <div id="scheduleOutput" class="schedule-output"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LONG_MESSAGE_THRESHOLD = 100;
+        const LONG_ALERT_TIMEOUT = 15000;
+        const DEFAULT_ALERT_TIMEOUT = 5000;
+
+        let todos = [];
+        let fixedItems = [];
+        let blockedTimes = [];
+        let generatedSchedule = [];
+        let nextId = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            document.getElementById('startDate').valueAsDate = today;
+            document.getElementById('endDate').valueAsDate = tomorrow;
+            
+            loadTheme();
+            loadAISettings();
+            loadAIModels();
+            renderTodos();
+            renderFixed();
+            renderBlocked();
+            renderSchedule();
+        });
+
+        function loadTheme() {
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        function loadAISettings() {
+            const apiKey = localStorage.getItem('aiApiKey');
+            const model = localStorage.getItem('aiModel');
+            if (apiKey) document.getElementById('aiApiKey').value = apiKey;
+            if (model) document.getElementById('aiModel').value = model;
+        }
+
+        function saveAISettings() {
+            const apiKey = document.getElementById('aiApiKey').value;
+            const model = document.getElementById('aiModel').value;
+            if (apiKey) localStorage.setItem('aiApiKey', apiKey);
+            if (model) localStorage.setItem('aiModel', model);
+        }
+
+        async function loadAIModels() {
+            const select = document.getElementById('aiModel');
+            select.innerHTML = '<option value="">Loading...</option>';
+            
+            try {
+                const response = await fetch('https://gen.pollinations.ai/text/models');
+                const data = await response.json();
+                
+                select.innerHTML = '<option value="">Select Model</option>';
+                data.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id || model.name || model;
+                    option.textContent = model.name || model.id || model;
+                    select.appendChild(option);
+                });
+                
+                const saved = localStorage.getItem('aiModel');
+                if (saved) select.value = saved;
+            } catch (error) {
+                console.error('Failed to load AI models:', error);
+                select.innerHTML = '<option value="">Select Model</option>';
+                showAlert('Could not load AI models. Please check your internet connection. Error: ' + error.message, 'warning');
+            }
+        }
+
+        function toggleCollapsible(element) {
+            const content = element.nextElementSibling;
+            content.classList.toggle('active');
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function showAlert(message, type = 'error') {
+            const alert = document.getElementById('alert');
+            alert.className = `alert ${type} show`;
+            alert.textContent = message;
+            // Error messages stay longer, success messages shorter
+            const baseTimeout = type === 'error' ? 8000 : type === 'success' ? 4000 : 6000;
+            const timeout = message.length > LONG_MESSAGE_THRESHOLD ? baseTimeout * 2 : baseTimeout;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, timeout);
+        }
+
+        function timeToMinutes(time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+
+        function addTodo() {
+            const name = document.getElementById('todoName').value.trim();
+            const duration = parseFloat(document.getElementById('todoDuration').value);
+            const priority = document.getElementById('todoPriority').value;
+            const recurrence = document.getElementById('todoRecurrence').value;
+            const dependencyId = document.getElementById('todoDependency').value;
+
+            if (!name || !duration || duration <= 0) {
+                showAlert('Please enter a valid task name and duration');
+                return;
+            }
+
+            todos.push({
+                id: nextId++,
+                name,
+                duration,
+                priority,
+                recurrence,
+                dependencyId: dependencyId ? parseInt(dependencyId) : null
+            });
+
+            document.getElementById('todoName').value = '';
+            document.getElementById('todoDuration').value = '1';
+            updateDependencyDropdown();
+            renderTodos();
+        }
+
+        function addFixed() {
+            const name = document.getElementById('fixedName').value.trim();
+            const startTime = document.getElementById('fixedStart').value;
+            const endTime = document.getElementById('fixedEnd').value;
+
+            if (!name || !startTime || !endTime) {
+                showAlert('Please fill all fixed item fields');
+                return;
+            }
+
+            if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+                showAlert('End time must be after start time');
+                return;
+            }
+
+            fixedItems.push({
+                id: nextId++,
+                name,
+                startTime,
+                endTime
+            });
+
+            document.getElementById('fixedName').value = '';
+            document.getElementById('fixedStart').value = '';
+            document.getElementById('fixedEnd').value = '';
+            renderFixed();
+        }
+
+        function addBlocked() {
+            const name = document.getElementById('blockedName').value.trim();
+            const startTime = document.getElementById('blockedStart').value;
+            const endTime = document.getElementById('blockedEnd').value;
+
+            if (!name || !startTime || !endTime) {
+                showAlert('Please fill all blocked time fields');
+                return;
+            }
+
+            if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+                showAlert('End time must be after start time');
+                return;
+            }
+
+            blockedTimes.push({
+                id: nextId++,
+                name,
+                startTime,
+                endTime
+            });
+
+            document.getElementById('blockedName').value = '';
+            document.getElementById('blockedStart').value = '';
+            document.getElementById('blockedEnd').value = '';
+            renderBlocked();
+        }
+
+        function removeTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            todos.forEach(t => {
+                if (t.dependencyId === id) {
+                    t.dependencyId = null;
+                }
+            });
+            updateDependencyDropdown();
+            renderTodos();
+        }
+
+        function removeFixed(id) {
+            fixedItems = fixedItems.filter(f => f.id !== id);
+            renderFixed();
+        }
+
+        function removeBlocked(id) {
+            blockedTimes = blockedTimes.filter(b => b.id !== id);
+            renderBlocked();
+        }
+
+        function updateDependencyDropdown() {
+            const select = document.getElementById('todoDependency');
+            select.innerHTML = '<option value="">No Dependency</option>';
+            todos.forEach(todo => {
+                const option = document.createElement('option');
+                option.value = todo.id;
+                option.textContent = todo.name;
+                select.appendChild(option);
+            });
+        }
+
+        function renderTodos() {
+            const list = document.getElementById('todoList');
+            if (todos.length === 0) {
+                list.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No tasks added yet</p>';
+                return;
+            }
+
+            list.innerHTML = todos.map(todo => {
+                const depTask = todo.dependencyId ? todos.find(t => t.id === todo.dependencyId) : null;
+                const depBadge = depTask ? `<span class="dependency-badge">Depends on: ${escapeHtml(depTask.name)}</span>` : '';
+                const recBadge = todo.recurrence !== 'none' ? `<span class="recurring-badge">${todo.recurrence}</span>` : '';
+                
+                return `
+                    <div class="item priority-${todo.priority}">
+                        <div class="item-content">
+                            <div class="item-title">
+                                ${escapeHtml(todo.name)}
+                                <span class="priority-badge ${todo.priority}">${todo.priority.toUpperCase()}</span>
+                                ${recBadge}
+                                ${depBadge}
+                            </div>
+                            <div class="item-details">${todo.duration} hour(s)</div>
+                        </div>
+                        <button class="danger" onclick="removeTodo(${todo.id})">Remove</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFixed() {
+            const list = document.getElementById('fixedList');
+            if (fixedItems.length === 0) {
+                list.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No fixed items added yet</p>';
+                return;
+            }
+
+            list.innerHTML = fixedItems.map(item => `
+                <div class="item fixed">
+                    <div class="item-content">
+                        <div class="item-title">${escapeHtml(item.name)}</div>
+                        <div class="item-details">${item.startTime} - ${item.endTime}</div>
+                    </div>
+                    <button class="danger" onclick="removeFixed(${item.id})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function renderBlocked() {
+            const list = document.getElementById('blockedList');
+            if (blockedTimes.length === 0) {
+                list.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No blocked times added yet</p>';
+                return;
+            }
+
+            list.innerHTML = blockedTimes.map(item => `
+                <div class="item blocked">
+                    <div class="item-content">
+                        <div class="item-title">${escapeHtml(item.name)}</div>
+                        <div class="item-details">${item.startTime} - ${item.endTime}</div>
+                    </div>
+                    <button class="danger" onclick="removeBlocked(${item.id})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function clearAll() {
+            if (!confirm('Are you sure you want to clear all items?')) return;
+            todos = [];
+            fixedItems = [];
+            blockedTimes = [];
+            generatedSchedule = [];
+            renderTodos();
+            renderFixed();
+            renderBlocked();
+            renderSchedule();
+            showAlert('All items cleared', 'success');
+        }
+
+        function topologicalSort(tasks) {
+            const sorted = [];
+            const visited = new Set();
+            const visiting = new Set();
+            const dependencyChain = [];
+
+            function visit(taskId) {
+                if (visited.has(taskId)) return true;
+                if (visiting.has(taskId)) {
+                    const cycleStart = dependencyChain.indexOf(taskId);
+                    const cycle = dependencyChain.slice(cycleStart).map(id => {
+                        const task = tasks.find(t => t.id === id);
+                        return task ? task.name : `Task ${id}`;
+                    }).join(' → ');
+                    showAlert(`Circular dependency detected: ${cycle} → ${tasks.find(t => t.id === taskId)?.name || taskId}. Please remove or change task dependencies to break the cycle.`, 'error');
+                    return false;
+                }
+
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return true;
+
+                visiting.add(taskId);
+                dependencyChain.push(taskId);
+
+                if (task.dependencyId) {
+                    if (!visit(task.dependencyId)) return false;
+                }
+
+                visiting.delete(taskId);
+                dependencyChain.pop();
+                visited.add(taskId);
+                sorted.push(task);
+                return true;
+            }
+
+            for (const task of tasks) {
+                if (!visited.has(task.id)) {
+                    if (!visit(task.id)) return null;
+                }
+            }
+
+            return sorted;
+        }
+
+        function expandRecurringTasks(tasks, startDate, endDate) {
+            const expanded = [];
+            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+            for (const task of tasks) {
+                if (task.recurrence === 'none') {
+                    expanded.push({ ...task, date: startDate });
+                } else if (task.recurrence === 'daily') {
+                    for (let i = 0; i < daysDiff; i++) {
+                        const date = new Date(startDate);
+                        date.setDate(date.getDate() + i);
+                        expanded.push({ ...task, date, originalId: task.id, recurrenceIndex: i });
+                    }
+                } else if (task.recurrence === 'weekly') {
+                    const weeksCount = Math.ceil(daysDiff / 7);
+                    for (let i = 0; i < weeksCount; i++) {
+                        const date = new Date(startDate);
+                        date.setDate(date.getDate() + (i * 7));
+                        if (date <= endDate) {
+                            expanded.push({ ...task, date, originalId: task.id, recurrenceIndex: i });
+                        }
+                    }
+                }
+            }
+
+            return expanded;
+        }
+
+        function generateSchedule() {
+            const workStart = document.getElementById('workStart').value;
+            const workEnd = document.getElementById('workEnd').value;
+            const startDate = document.getElementById('startDate').valueAsDate;
+            const endDate = document.getElementById('endDate').valueAsDate;
+            const breakDuration = parseInt(document.getElementById('breakDuration').value) || 15;
+            const breakFrequency = parseFloat(document.getElementById('breakFrequency').value) || 2;
+
+            if (!workStart || !workEnd) {
+                showAlert('Please set working hours');
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                showAlert('Please set date range');
+                return;
+            }
+
+            if (startDate > endDate) {
+                showAlert('End date must be after start date');
+                return;
+            }
+
+            if (todos.length === 0 && fixedItems.length === 0) {
+                showAlert('Please add at least one task');
+                return;
+            }
+
+            const sortedTasks = topologicalSort([...todos]);
+            if (!sortedTasks) return;
+
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            sortedTasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+            const expandedTasks = expandRecurringTasks(sortedTasks, startDate, endDate);
+
+            generatedSchedule = [];
+            const workStartMin = timeToMinutes(workStart);
+            const workEndMin = timeToMinutes(workEnd);
+            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+            for (let dayOffset = 0; dayOffset < daysDiff; dayOffset++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(currentDate.getDate() + dayOffset);
+                const dateStr = currentDate.toISOString().split('T')[0];
+
+                const daySchedule = {
+                    date: currentDate,
+                    dateStr,
+                    slots: []
+                };
+
+                fixedItems.forEach(item => {
+                    daySchedule.slots.push({
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        name: item.name,
+                        type: 'fixed'
+                    });
+                });
+
+                blockedTimes.forEach(item => {
+                    daySchedule.slots.push({
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        name: item.name,
+                        type: 'blocked'
+                    });
+                });
+
+                daySchedule.slots.sort((a, b) => 
+                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+                );
+
+                let currentTime = workStartMin;
+                let accumulatedWorkMinutes = 0;
+                const tasksForToday = expandedTasks.filter(t => {
+                    if (!t.date) return dayOffset === 0;
+                    return t.date.toDateString() === currentDate.toDateString();
+                });
+
+                for (const task of tasksForToday) {
+                    const taskDurationMin = task.duration * 60;
+                    
+                    if (breakFrequency > 0 && accumulatedWorkMinutes >= breakFrequency * 60) {
+                        const breakEnd = currentTime + breakDuration;
+                        if (breakEnd <= workEndMin) {
+                            daySchedule.slots.push({
+                                startTime: minutesToTime(currentTime),
+                                endTime: minutesToTime(breakEnd),
+                                name: `☕ Break (${breakDuration} min)`,
+                                type: 'break'
+                            });
+                            currentTime = breakEnd;
+                            accumulatedWorkMinutes = 0;
+                        }
+                    }
+
+                    while (currentTime + taskDurationMin <= workEndMin) {
+                        const taskEnd = currentTime + taskDurationMin;
+                        
+                        let conflict = false;
+                        for (const slot of daySchedule.slots) {
+                            if (slot.type === 'flexible') continue;
+                            const slotStart = timeToMinutes(slot.startTime);
+                            const slotEnd = timeToMinutes(slot.endTime);
+                            
+                            if (!(taskEnd <= slotStart || currentTime >= slotEnd)) {
+                                conflict = true;
+                                currentTime = slotEnd;
+                                break;
+                            }
+                        }
+
+                        if (!conflict) {
+                            daySchedule.slots.push({
+                                startTime: minutesToTime(currentTime),
+                                endTime: minutesToTime(taskEnd),
+                                name: task.name,
+                                type: 'flexible',
+                                priority: task.priority
+                            });
+                            accumulatedWorkMinutes += taskDurationMin;
+                            currentTime = taskEnd;
+                            break;
+                        }
+
+                        if (currentTime >= workEndMin) break;
+                    }
+                }
+
+                daySchedule.slots.sort((a, b) => 
+                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+                );
+
+                generatedSchedule.push(daySchedule);
+            }
+
+            renderSchedule();
+            showAlert('Schedule generated successfully!', 'success');
+        }
+
+        function renderSchedule() {
+            const output = document.getElementById('scheduleOutput');
+            
+            if (generatedSchedule.length === 0) {
+                output.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <p>No schedule generated yet. Add tasks and click "Generate Schedule"</p>
+                    </div>
+                `;
+                return;
+            }
+
+            output.innerHTML = generatedSchedule.map(day => {
+                const dayName = day.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                
+                if (day.slots.length === 0) {
+                    return `
+                        <div class="schedule-day">
+                            <div class="day-header">${dayName}</div>
+                            <div class="day-content">
+                                <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No tasks scheduled for this day</p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const slotsHtml = day.slots.map(slot => {
+                    const priorityClass = slot.priority ? `priority-${slot.priority}` : '';
+                    const badge = slot.priority ? `<span class="priority-badge ${slot.priority}">${slot.priority.toUpperCase()}</span>` : '';
+                    
+                    return `
+                        <div class="time-slot ${slot.type} ${priorityClass}">
+                            <div class="time">${slot.startTime} - ${slot.endTime}</div>
+                            <div class="task-name">${escapeHtml(slot.name)} ${badge}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="schedule-day">
+                        <div class="day-header">${dayName}</div>
+                        <div class="day-content">${slotsHtml}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function aiSuggestSchedule(event) {
+            saveAISettings();
+            
+            const apiKey = document.getElementById('aiApiKey').value.trim();
+            const model = document.getElementById('aiModel').value || 'openai';
+            
+            if (todos.length === 0) {
+                showAlert('Please add at least one task before using AI suggestions');
+                return;
+            }
+
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<span class="loading"></span> Thinking...';
+            button.disabled = true;
+
+            try {
+                const prompt = `You are a scheduling assistant. Given the following tasks, suggest an optimized schedule considering priorities and dependencies.
+
+Tasks:
+${todos.map(t => `- ${t.name} (${t.duration}h, priority: ${t.priority}, recurrence: ${t.recurrence}${t.dependencyId ? `, depends on task ${t.dependencyId}` : ''})`).join('\n')}
+
+Fixed Items:
+${fixedItems.map(f => `- ${f.name} (${f.startTime} - ${f.endTime})`).join('\n')}
+
+Please provide scheduling recommendations, considering:
+1. High priority tasks should be scheduled first
+2. Dependencies must be respected
+3. Breaks should be included
+4. Work-life balance
+
+Provide a brief, actionable recommendation.`;
+
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
+
+                const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            { role: 'system', content: 'You are a helpful scheduling assistant.' },
+                            { role: 'user', content: prompt }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    throw new Error(`API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`);
+                }
+
+                const data = await response.json();
+                const suggestion = data.choices?.[0]?.message?.content || 'No suggestion available';
+                
+                showAlert(`AI Suggestion: ${suggestion}`, 'success');
+            } catch (error) {
+                console.error('AI Error:', error);
+                showAlert(`AI request failed: ${error.message}`, 'error');
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function exportToWord() {
+            if (generatedSchedule.length === 0) {
+                showAlert('Please generate a schedule first');
+                return;
+            }
+
+            const { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType } = docx;
+
+            const children = [];
+
+            children.push(
+                new Paragraph({
+                    text: "Generated Schedule",
+                    heading: docx.HeadingLevel.HEADING_1,
+                    spacing: { after: 300 }
+                })
+            );
+
+            generatedSchedule.forEach(day => {
+                const dayName = day.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                
+                children.push(
+                    new Paragraph({
+                        text: dayName,
+                        heading: docx.HeadingLevel.HEADING_2,
+                        spacing: { before: 200, after: 100 }
+                    })
+                );
+
+                if (day.slots.length === 0) {
+                    children.push(
+                        new Paragraph({
+                            text: "No tasks scheduled for this day",
+                            spacing: { after: 200 }
+                        })
+                    );
+                } else {
+                    const rows = day.slots.map(slot => 
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    children: [new Paragraph(`${slot.startTime} - ${slot.endTime}`)],
+                                    width: { size: 30, type: WidthType.PERCENTAGE }
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph(slot.name)],
+                                    width: { size: 70, type: WidthType.PERCENTAGE }
+                                })
+                            ]
+                        })
+                    );
+
+                    children.push(
+                        new Table({
+                            rows: rows,
+                            width: { size: 100, type: WidthType.PERCENTAGE }
+                        })
+                    );
+
+                    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+                }
+            });
+
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: children
+                }]
+            });
+
+            Packer.toBlob(doc).then(blob => {
+                saveAs(blob, "schedule.docx");
+                showAlert('Schedule exported successfully!', 'success');
+            });
+        }
+    </script>
+</body>
+</html>
